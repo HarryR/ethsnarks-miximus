@@ -1,5 +1,7 @@
 # Miximus
 
+[![Build Status](https://travis-ci.org/HarryR/ethsnarks-miximus.svg?branch=master)](https://travis-ci.org/HarryR/ethsnarks-miximus)
+
 Miximus is a self-service coin mixer and anonymous transfer method for Ethereum, it accepts deposits of 1 ETH, then allows you to withdraw coins by providing a zkSNARK proof that proves you know the spend key for one unspent coin without revealing which one it is.
 
 For more information, see:
