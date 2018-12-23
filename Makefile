@@ -3,7 +3,7 @@ CLI = .build/miximus_cli
 all: $(CLI) test
 
 $(CLI): release
-	make -C $(dir $@)
+	$(MAKE) -C $(dir $@)
 
 .build:
 	mkdir -p $@
@@ -15,6 +15,9 @@ debug:
 release:
 	mkdir -p .build && cd .build && cmake -DCMAKE_BUILD_TYPE=Release ../circuit/
 
+performance:
+	mkdir -p .build && cd .build && cmake -DCMAKE_BUILD_TYPE=Release -DPERFORMANCE=1 ../circuit/
+
 git-submodules:
 	git submodule update --init --recursive
 
@@ -22,10 +25,10 @@ clean:
 	rm -rf .build
 
 python-test:
-	make -C python test
+	$(MAKE) -C python test
 
 solidity-test:
-	make -C solidity test
+	$(MAKE) -C solidity test
 
 test: .keys/miximus.pk.raw solidity-test python-test
 
