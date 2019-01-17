@@ -1,6 +1,7 @@
 import unittest
 
-from ethsnarks.longsight import random_element, LongsightL12p5_MP
+from ethsnarks.field import FQ
+from ethsnarks.mimc import mimc_hash
 from ethsnarks.utils import native_lib_path
 from ethsnarks.merkletree import MerkleTree
 from miximus import Miximus
@@ -16,15 +17,13 @@ class TestMiximus(unittest.TestCase):
 		n_items = 2<<28
 		tree = MerkleTree(n_items)
 		for n in range(0, 2):
-			tree.append(random_element())
+			tree.append(int(FQ.random()))
 
-		exthash = random_element()
-		nullifier = random_element()
-		spend_preimage = random_element()
-		spend_hash_IV = 0
-		spend_hash = LongsightL12p5_MP([spend_preimage, nullifier], spend_hash_IV)
-		leaf_hash_IV = 0
-		leaf_hash = LongsightL12p5_MP([nullifier, spend_hash], leaf_hash_IV)
+		exthash = int(FQ.random())
+		nullifier = int(FQ.random())
+		spend_preimage = int(FQ.random())
+		spend_hash = mimc_hash([spend_preimage, nullifier])
+		leaf_hash = mimc_hash([nullifier, spend_hash])
 		leaf_idx = tree.append(leaf_hash)
 		self.assertEqual(leaf_idx, tree.index(leaf_hash))
 

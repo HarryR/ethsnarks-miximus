@@ -21,6 +21,10 @@ performance:
 git-submodules:
 	git submodule update --init --recursive
 
+git-pull:
+	git pull --recurse-submodules
+	git submodule update --recursive --remote
+
 clean:
 	rm -rf .build
 

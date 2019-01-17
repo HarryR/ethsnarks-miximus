@@ -6,7 +6,7 @@ const fs = require("fs");
 const ffi = require("ffi");
 const ref = require("ref");
 const ArrayType = require("ref-array");
-const BigNumber = require("bignumber.js");
+const BN = require("bn.js");
 
 var StringArray = ArrayType(ref.types.CString);
 
@@ -76,14 +76,14 @@ contract("TestableMiximus", () => {
             let obj = await TestableMiximus.deployed();
 
             // Parameters for deposit
-            let spend_preimage = new BigNumber(crypto.randomBytes(30).toString("hex"), 16);
-            let nullifier = new BigNumber(crypto.randomBytes(30).toString("hex"), 16);
+            let spend_preimage = new BN(crypto.randomBytes(30).toString("hex"), 16);
+            let nullifier = new BN(crypto.randomBytes(30).toString("hex"), 16);
             let leaf_hash = await obj.MakeLeafHash.call(spend_preimage, nullifier);
 
 
             // Perform deposit
             let new_root_and_offset = await obj.Deposit.call(leaf_hash, {value: 1000000000000000000});
-            await obj.Deposit.sendTransaction([leaf_hash], {value: 1000000000000000000});
+            await obj.Deposit.sendTransaction(leaf_hash, {value: 1000000000000000000});
 
 
             // TODO: verify amount has been transferred

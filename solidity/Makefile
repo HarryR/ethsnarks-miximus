@@ -1,3 +1,6 @@
+compile:
+	npm run compile
+
 node_modules:
 	npm install
 
