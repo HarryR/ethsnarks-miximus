@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.0;
 
 import "./Miximus.sol";
 
@@ -12,7 +12,7 @@ contract TestableMiximus is Miximus
     uint256[14] m_vk;
     uint256[] m_gammaABC;
 
-    constructor( uint256[14] in_vk, uint256[] in_gammaABC )
+    constructor( uint256[14] memory in_vk, uint256[] memory in_gammaABC )
         public
     {
         m_vk = in_vk;
@@ -20,7 +20,7 @@ contract TestableMiximus is Miximus
     }
 
 
-    function TestVerify ( uint256[14] in_vk, uint256[] vk_gammaABC, uint256[8] in_proof, uint256[] proof_inputs )
+    function TestVerify ( uint256[14] memory in_vk, uint256[] memory vk_gammaABC, uint256[8] memory in_proof, uint256[] memory proof_inputs )
         public view returns (bool)
     {
         return Verifier.Verify(in_vk, vk_gammaABC, in_proof, proof_inputs);
@@ -28,7 +28,7 @@ contract TestableMiximus is Miximus
 
 
     function GetVerifyingKey ()
-        public view returns (uint256[14] out_vk, uint256[] out_gammaABC)
+        public view returns (uint256[14] memory out_vk, uint256[] memory out_gammaABC)
     {
         return (m_vk, m_gammaABC);
     }

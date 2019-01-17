@@ -23,9 +23,10 @@
 #include "stubs.hpp"
 #include "utils.hpp"
 
-#include "gadgets/longsightl.cpp"
-#include "gadgets/longsightl_constants.cpp"
+#include "gadgets/mimc.hpp"
 #include "gadgets/merkle_tree.cpp"
+
+#include <libsnark/gadgetlib1/gadgets/basic_gadgets.hpp>
 
 
 using libsnark::generate_r1cs_equals_const_constraint;
@@ -45,7 +46,7 @@ namespace ethsnarks {
 class mod_miximus : public GadgetT
 {
 public:
-    typedef LongsightL12p5_MP_gadget HashT;
+    typedef MiMC_hash_gadget HashT;
     const size_t tree_depth = MIXIMUS_TREE_DEPTH;
 
 

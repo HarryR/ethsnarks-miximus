@@ -17,12 +17,12 @@
     along with Miximus.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.0;
 
 import "../../ethsnarks/contracts/Verifier.sol";
 import "../../ethsnarks/contracts/SnarkUtils.sol";
 import "../../ethsnarks/contracts/MerkleTree.sol";
-import "../../ethsnarks/contracts/LongsightL.sol";
+import "../../ethsnarks/contracts/MiMC.sol";
 
 
 contract Miximus
@@ -58,17 +58,20 @@ contract Miximus
     function MakeLeafHash(uint256 spend_preimage, uint256 nullifier)
         public pure returns (uint256)
     {
-        uint256[10] memory round_constants;
-        LongsightL.ConstantsL12p5(round_constants);
+        uint256[] memory vals = new uint256[](2);
 
-        uint256 spend_hash = LongsightL.LongsightL12p5_MP([spend_preimage, nullifier], 0, round_constants);
+        vals[0] = spend_preimage;
+        vals[1] = nullifier;
+        uint256 spend_hash = MiMC.Hash(vals, 0);
 
-        return LongsightL.LongsightL12p5_MP([nullifier, spend_hash], 0, round_constants);
+        vals[0] = nullifier;
+        vals[1] = spend_hash;
+        return MiMC.Hash(vals, 0);
     }
 
 
     function GetPath(uint256 leaf)
-        public view returns (uint256[29] out_path, bool[29] out_addr)
+        public view returns (uint256[29] memory out_path, bool[29] memory out_addr)
     {
         return tree.GetProof(leaf);
     }
@@ -92,7 +95,7 @@ contract Miximus
     }
 
 
-    function VerifyProof( uint256 in_root, uint256 in_nullifier, uint256 in_exthash, uint256[8] proof )
+    function VerifyProof( uint256 in_root, uint256 in_nullifier, uint256 in_exthash, uint256[8] memory proof )
         public view returns (bool)
     {
         uint256[] memory snark_input = new uint256[](3);
@@ -111,7 +114,7 @@ contract Miximus
     function Withdraw(
         uint256 in_root,
         uint256 in_nullifier,
-        uint256[8] proof
+        uint256[8] memory proof
     )
         public
     {
@@ -128,5 +131,5 @@ contract Miximus
 
 
     function GetVerifyingKey ()
-        public view returns (uint256[14] out_vk, uint256[] out_gammaABC);
+        public view returns (uint256[14] memory out_vk, uint256[] memory out_gammaABC);
 }

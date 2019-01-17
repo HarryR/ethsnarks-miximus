@@ -1,6 +1,7 @@
 const Verifier = artifacts.require('Verifier.sol');
 const TestableMiximus = artifacts.require('TestableMiximus.sol');
-
+const MiMC = artifacts.require('MiMC.sol');
+const MerkleTree = artifacts.require('MerkleTree.sol');
 
 
 let list_flatten = (l) => {
@@ -23,8 +24,10 @@ let vk_to_flat = (vk) => {
 
 async function doDeploy( deployer, network )
 {
+    await deployer.deploy(MiMC);
 	await deployer.deploy(Verifier);
 	await deployer.link(Verifier, TestableMiximus);
+    await deployer.link(MiMC, TestableMiximus);
 
     var vk = require('../../.keys/miximus.vk.json');
     let [vk_flat, vk_flat_IC] = vk_to_flat(vk);
