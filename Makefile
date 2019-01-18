@@ -2,7 +2,7 @@ CLI = .build/miximus_cli
 
 all: $(CLI) test
 
-$(CLI): release
+$(CLI): .build
 	$(MAKE) -C $(dir $@)
 
 .build:
