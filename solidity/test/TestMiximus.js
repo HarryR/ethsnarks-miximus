@@ -99,7 +99,7 @@ contract("TestableMiximus", () => {
             let proof_root = await obj.GetRoot.call();
             proof_root = new_root_and_offset[0];
             let proof_exthash = await obj.GetExtHash.call();
-
+            let proof_pub_hash = await obj.HashPublicInputs.call(proof_root, nullifier, proof_exthash);
 
             // Run prover to generate proof
             let args = [
@@ -116,10 +116,8 @@ contract("TestableMiximus", () => {
             let proof = JSON.parse(proof_json);
 
 
-            // Ensure proof inputs match ours
-            assert.strictEqual("0x" + proof_root.toString(16), proof.input[0]);
-            assert.strictEqual("0x" + nullifier.toString(16), proof.input[1]);
-            assert.strictEqual("0x" + proof_exthash.toString(16), proof.input[2]);
+            // Ensure proof inputs match what is expected
+            assert.strictEqual("0x" + proof_pub_hash.toString(16), proof.input[0]);
 
 
             // Re-verify proof using native library
@@ -137,9 +135,7 @@ contract("TestableMiximus", () => {
                 vk_flat_IC,             // gammaABC[]
                 proof_to_flat(proof),   // A B C
                 [  
-                    proof.input[0],
-                    proof.input[1],
-                    proof.input[2]
+                    proof.input[0]
                 ]
             ];
             let test_verify_result = await obj.TestVerify(...test_verify_args);
@@ -148,9 +144,9 @@ contract("TestableMiximus", () => {
 
             // Verify whether or not our proof would be valid
             let proof_valid = await obj.VerifyProof.call(
-                proof.input[0],
-                proof.input[1],
-                proof.input[2],
+                proof_root,
+                nullifier,
+                proof_exthash,
                 proof_to_flat(proof));
             assert.strictEqual(proof_valid, true);
 
