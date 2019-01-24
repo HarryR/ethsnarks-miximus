@@ -9,8 +9,8 @@ import "./Miximus.sol";
 
 contract TestableMiximus is Miximus
 {
-    uint256[14] m_vk;
-    uint256[] m_gammaABC;
+    uint256[14] private m_vk;
+    uint256[] private m_gammaABC;
 
     constructor( uint256[14] memory in_vk, uint256[] memory in_gammaABC )
         public
