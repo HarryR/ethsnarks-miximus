@@ -50,19 +50,31 @@ class Miximus(object):
         lib_tree_depth.restype = ctypes.c_size_t
         self.tree_depth = lib_tree_depth()
         assert self.tree_depth > 0
-        assert self.tree_depth < 32
+        assert self.tree_depth <= 32
 
         lib_prove = lib.miximus_prove
-        lib_prove.argtypes = ([ctypes.c_char_p] * 6) + [(ctypes.c_char_p * self.tree_depth)]
+        lib_prove.argtypes = ([ctypes.c_char_p] * 5) + [(ctypes.c_char_p * self.tree_depth)]
         lib_prove.restype = ctypes.c_char_p
         self._prove = lib_prove
 
         lib_verify = lib.miximus_verify
-        lib_verify.argtypes = [ctypes.c_char_p, ctypes.c_char_p] 
+        lib_verify.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         lib_verify.restype = ctypes.c_bool
         self._verify = lib_verify
 
-    def prove(self, root, nullifier, spend_preimage, exthash, address_bits, path, pk_file=None):
+        lib_nullifier = lib.miximus_nullifier
+        lib_nullifier.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+        lib_nullifier.restype = ctypes.c_char_p
+        self._nullifier = lib_nullifier
+
+    def nullifier(self, secret, leaf_index):
+        assert isinstance(secret, int)
+        assert isinstance(leaf_index, int)
+        secret = ctypes.c_char_p(str(secret).encode('ascii'))
+        leaf_index = ctypes.c_char_p(str(leaf_index).encode('ascii'))
+        return int(self._nullifier(secret, leaf_index))
+
+    def prove(self, root, spend_preimage, exthash, address_bits, path, pk_file=None):
         assert isinstance(path, (list, tuple))
         assert len(path) == self.tree_depth
         if isinstance(address_bits, (tuple, list)):
@@ -70,7 +82,6 @@ class Miximus(object):
         assert re.match(r'^[01]+$', address_bits)
         assert len(address_bits) == self.tree_depth
         assert isinstance(root, int)
-        assert isinstance(nullifier, int)
         assert isinstance(spend_preimage, int)
         assert isinstance(exthash, int)
         # TODO: require root, nullifier, spend_preimage and exthash are ints within curve order range
@@ -82,7 +93,6 @@ class Miximus(object):
 
         # Public parameters
         root = ctypes.c_char_p(str(root).encode('ascii'))
-        nullifier = ctypes.c_char_p(str(nullifier).encode('ascii'))
         exthash = ctypes.c_char_p(str(exthash).encode('ascii'))
     
         # Private parameters
@@ -94,7 +104,7 @@ class Miximus(object):
 
         pk_file_cstr = ctypes.c_char_p(pk_file.encode('ascii'))
 
-        data = self._prove(pk_file_cstr, root, nullifier, exthash, spend_preimage, address_bits, path_carr)
+        data = self._prove(pk_file_cstr, root, exthash, spend_preimage, address_bits, path_carr)
         if data is None:
             raise RuntimeError("Could not prove!")
         return Proof.from_json(data)

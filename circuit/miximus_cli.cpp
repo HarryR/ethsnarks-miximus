@@ -45,7 +45,6 @@ static int main_prove( int argc, char **argv )
         cerr << "\t<pk.raw>         Path to proving key" << endl;
         cerr << "\t<proof.json>     Write proof to this file" << endl;
         cerr << "\t<root>           Merkle tree root" << endl;
-        cerr << "\t<nullifier>      Nullifier" << endl;
         cerr << "\t<exthash>        Hash of external variables" << endl;
         cerr << "\t<secret>         Spend secret" << endl;
         cerr << "\t<merkle-address> 0 and 1 bits for tree path" << endl;
@@ -56,17 +55,16 @@ static int main_prove( int argc, char **argv )
     auto pk_filename = argv[2];
     auto proof_filename = argv[3];
     auto arg_root = argv[4];
-    auto arg_nullifier = argv[5];
-    auto arg_exthash = argv[6];
-    auto arg_secret = argv[7];
-    auto arg_address = argv[8];
+    auto arg_exthash = argv[5];
+    auto arg_secret = argv[6];
+    auto arg_address = argv[7];
     
     const char *arg_path[MIXIMUS_TREE_DEPTH];
     for( size_t i = 0; i < MIXIMUS_TREE_DEPTH; i++ ) {
         arg_path[i] = argv[9 + i];
     }
 
-    auto json = miximus_prove(pk_filename, arg_root, arg_nullifier, arg_exthash, arg_secret, arg_address, arg_path);
+    auto json = miximus_prove(pk_filename, arg_root, arg_exthash, arg_secret, arg_address, arg_path);
 
     ofstream fh;
     fh.open(proof_filename, std::ios::binary);

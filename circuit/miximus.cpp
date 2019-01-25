@@ -29,6 +29,7 @@ along with Miximus.  If not, see <https://www.gnu.org/licenses/>.
 #include <libsnark/gadgetlib1/gadgets/basic_gadgets.hpp>
 
 
+using libsnark::dual_variable_gadget;
 using libff::convert_field_element_to_bit_vector;
 using ethsnarks::ppT;
 using ethsnarks::FieldT;
@@ -90,7 +91,6 @@ public:
 
     // hashed public inputs
     const VariableT root_var;
-    const VariableT nullifier_var;
     const VariableT external_hash_var;
 
     // public constants
@@ -101,12 +101,12 @@ public:
 
     // private inputs
     const VariableT secret_var;
-    const VariableArrayT address_bits;    
+    dual_variable_gadget<FieldT> address_bits;
     const VariableArrayT path_var;
 
     // logic gadgets
+    HashT nullifier_hash;
     HashT pub_hash;
-    HashT spend_hash;
     HashT leaf_hash;
     merkle_path_authenticator<HashT> m_authenticator;
 
@@ -121,34 +121,31 @@ public:
 
         // hashed public inputs
         root_var(make_variable(in_pb, FMT(annotation_prefix, ".root_var"))),
-        nullifier_var(make_variable(in_pb, FMT(annotation_prefix, ".nullifier_var"))),
         external_hash_var(make_variable(in_pb, FMT(annotation_prefix, ".external_hash_var"))),
 
         // Initialisation vector for merkle tree hard-coded constants
         // Means that H('a', 'b') on level1 will have a different output than the same values on level2
         m_IVs(merkle_tree_IVs(in_pb)),
 
-        // constant inputs
+        // constant zero, used as IV for hash functions
         zero(make_variable(in_pb, FMT(annotation_prefix, ".zero"))),
 
         // private inputs
         secret_var(make_variable(in_pb, FMT(annotation_prefix, ".secret_var"))),
-        address_bits(make_var_array(in_pb, tree_depth, FMT(annotation_prefix, ".address_bits")) ),
+        address_bits(in_pb, tree_depth, FMT(annotation_prefix, ".address_bits")),
         path_var(make_var_array(in_pb, tree_depth, FMT(annotation_prefix, ".path"))),
 
-        // logic gadgets
+        // nullifier = H(address_bits, secret)
+        nullifier_hash(in_pb, zero, {address_bits.packed, secret_var}, FMT(annotation_prefix, ".nullifier_hash")),
 
         // pub_hash = H(root, nullifier, external_hash)
-        pub_hash(in_pb, zero, {root_var, nullifier_var, external_hash_var}, FMT(annotation_prefix, ".pub_hash")),
+        pub_hash(in_pb, zero, {root_var, nullifier_hash.result(), external_hash_var}, FMT(annotation_prefix, ".pub_hash")),
 
-        // spend_hash = H(spend_preimage, nullifier)
-        spend_hash(in_pb, zero, {secret_var, nullifier_var}, FMT(annotation_prefix, ".spend_hash")),
-
-        // leaf_hash = H(nullifier, spend_hash)
-        leaf_hash(in_pb, zero, {nullifier_var, spend_hash.result()}, FMT(annotation_prefix, ".leaf_hash")),
+        // leaf_hash = H(secret)
+        leaf_hash(in_pb, zero, {secret_var}, FMT(annotation_prefix, ".leaf_hash")),
 
         // assert merkle_path_authenticate(leaf_hash, path, root)
-        m_authenticator(in_pb, tree_depth, address_bits, m_IVs, leaf_hash.result(), root_var, path_var, FMT(annotation_prefix, ".authenticator"))
+        m_authenticator(in_pb, tree_depth, address_bits.bits, m_IVs, leaf_hash.result(), root_var, path_var, FMT(annotation_prefix, ".authenticator"))
     {
         // Only one public input variable is passed, which is `pub_hash`
         // The actual values are provided as private inputs
@@ -162,6 +159,9 @@ public:
 
     void generate_r1cs_constraints()
     {
+        nullifier_hash.generate_r1cs_constraints();
+        address_bits.generate_r1cs_constraints(true);
+
         // Ensure privately provided public inputs match the hashed input
         pub_hash.generate_r1cs_constraints();
         this->pb.add_r1cs_constraint(
@@ -173,14 +173,12 @@ public:
             ConstraintT(zero, zero, zero - zero),
             "0 * 0 == 0 - 0 ... zero is zero!");
 
-        spend_hash.generate_r1cs_constraints();
         leaf_hash.generate_r1cs_constraints();
         m_authenticator.generate_r1cs_constraints();
     }
 
     void generate_r1cs_witness(
         const FieldT in_root,         // merkle tree root
-        const FieldT in_nullifier,    // unique linkable tag
         const FieldT in_exthash,      // hash of external parameters
         const FieldT in_secret,     // spend secret
         const libff::bit_vector in_address,
@@ -188,24 +186,24 @@ public:
     ) {
         // hashed public inputs
         this->pb.val(root_var) = in_root;
-        this->pb.val(nullifier_var) = in_nullifier;
         this->pb.val(external_hash_var) = in_exthash;
-
-        // public hash
-        this->pb.val(pub_hash_var) = mimc_hash({in_root, in_nullifier, in_exthash});
-        pub_hash.generate_r1cs_witness();
 
         // private inputs
         this->pb.val(secret_var) = in_secret;
-        address_bits.fill_with_bits(this->pb, in_address);
+        address_bits.bits.fill_with_bits(this->pb, in_address);
+        address_bits.generate_r1cs_witness_from_bits();
+
+        nullifier_hash.generate_r1cs_witness();
+
+        // public hash
+        this->pb.val(pub_hash_var) = mimc_hash({in_root, this->pb.val(nullifier_hash.result()), in_exthash});
+        pub_hash.generate_r1cs_witness();
 
         for( size_t i = 0; i < tree_depth; i++ )
         {
             this->pb.val(path_var[i]) = in_path[i];
         }
 
-        // gadgets
-        spend_hash.generate_r1cs_witness();
         leaf_hash.generate_r1cs_witness();
         m_authenticator.generate_r1cs_witness();
     }
@@ -220,10 +218,32 @@ size_t miximus_tree_depth( void ) {
 }
 
 
+char* miximus_nullifier( const char *in_secret, const char *in_leaf_index )
+{
+    ppT::init_public_params();
+
+    const FieldT arg_secret(in_secret);
+    const FieldT arg_index(in_leaf_index);
+    const FieldT arg_result(ethsnarks::mimc_hash({arg_index, arg_secret}));
+
+    // Convert result to mpz
+    const auto result_bigint = arg_result.as_bigint();
+    mpz_t result_mpz;
+    mpz_init(result_mpz);
+    result_bigint.to_mpz(result_mpz);
+
+    // Convert to string
+    char *result_str = mpz_get_str(nullptr, 10, result_mpz);
+    assert( result_str != nullptr );
+    mpz_clear(result_mpz);
+
+    return result_str;
+}
+
+
 char *miximus_prove(
     const char *pk_file,
     const char *in_root,
-    const char *in_nullifier,
     const char *in_exthash,
     const char *in_secret,
     const char *in_address,
@@ -231,10 +251,9 @@ char *miximus_prove(
 ) {
     ppT::init_public_params();
 
-    FieldT arg_root(in_root);
-    FieldT arg_nullifier(in_nullifier);
-    FieldT arg_exthash(in_exthash);
-    FieldT arg_secret(in_secret);
+    const FieldT arg_root(in_root);
+    const FieldT arg_exthash(in_exthash);
+    const FieldT arg_secret(in_secret);
 
     // Fill address bits with 0s and 1s from str
     // XXX: populate bits from integer (offset of the leaf in the merkle tree)
@@ -248,7 +267,7 @@ char *miximus_prove(
     }
     for( size_t i = 0; i < MIXIMUS_TREE_DEPTH; i++ )
     {
-        if( in_address[i] != '0' and in_address[i] != '1' ) {
+        if( in_address[i] != '0' && in_address[i] != '1' ) {
             std::cerr << "Address bit " << i << " invalid, unknown: " << in_address[i] << std::endl;
             return nullptr;
         }
@@ -266,15 +285,17 @@ char *miximus_prove(
 
     // Create protoboard with gadget
     ProtoboardT pb;
-    ethsnarks::mod_miximus mod(pb, "module");
+    ethsnarks::mod_miximus mod(pb, "miximus");
     mod.generate_r1cs_constraints();
-    mod.generate_r1cs_witness(arg_root, arg_nullifier, arg_exthash, arg_secret, address_bits, arg_path);
+    mod.generate_r1cs_witness(arg_root, arg_exthash, arg_secret, address_bits, arg_path);
 
     if( ! pb.is_satisfied() )
     {
         std::cerr << "Not Satisfied!" << std::endl;
         return nullptr;
     }
+
+    std::cerr << pb.num_constraints() << " constraints" << std::endl;
 
     // Return proof as a JSON document, which must be destroyed by the caller
     const auto json = ethsnarks::stub_prove_from_pb(pb, pk_file);

@@ -78,18 +78,11 @@ contract Miximus
     }
 
 
-    function MakeLeafHash(uint256 secret, uint256 nullifier)
+    function MakeLeafHash(uint256 secret)
         public pure returns (uint256)
     {
-        // TODO: only need to hash the secret
-        uint256[] memory vals = new uint256[](2);
-
+        uint256[] memory vals = new uint256[](1);
         vals[0] = secret;
-        vals[1] = nullifier;
-        uint256 spend_hash = MiMC.Hash(vals);
-
-        vals[0] = nullifier;
-        vals[1] = spend_hash;
         return MiMC.Hash(vals);
     }
 

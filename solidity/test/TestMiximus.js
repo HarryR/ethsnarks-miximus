@@ -24,7 +24,6 @@ var libmiximus = ffi.Library("../.build/libmiximus", {
         "string", [
             "string",       // pk_file
             "string",       // in_root
-            "string",       // in_nullifier
             "string",       // in_exthash
             "string",       // in_spend_preimage
             "string",       // in_address
@@ -37,6 +36,14 @@ var libmiximus = ffi.Library("../.build/libmiximus", {
         "bool", [
             "string",   // vk_json
             "string",   // proof_json
+        ]
+    ],
+
+    // Create nullifier
+    "miximus_nullifier": [
+        "string", [
+            "string",   // secret (base 10 number)
+            "string",   // leaf_index (base 10 number)
         ]
     ]
 });
@@ -76,10 +83,8 @@ contract("TestableMiximus", () => {
             let obj = await TestableMiximus.deployed();
 
             // Parameters for deposit
-            let spend_preimage = new BN(crypto.randomBytes(30).toString("hex"), 16);
-            let nullifier = new BN(crypto.randomBytes(30).toString("hex"), 16);
-            let leaf_hash = await obj.MakeLeafHash.call(spend_preimage, nullifier);
-
+            let secret = new BN(crypto.randomBytes(30).toString("hex"), 16);
+            let leaf_hash = await obj.MakeLeafHash.call(secret);
 
             // Perform deposit
             let new_root_and_offset = await obj.Deposit.call(leaf_hash, {value: 1000000000000000000});
@@ -98,16 +103,19 @@ contract("TestableMiximus", () => {
             }
             let proof_root = await obj.GetRoot.call();
             proof_root = new_root_and_offset[0];
+            let leaf_index = new_root_and_offset[1];
             let proof_exthash = await obj.GetExtHash.call();
+
+            let nullifier = libmiximus.miximus_nullifier(secret.toString(10), leaf_index.toString(10));
+            console.log('Nullifier is', nullifier);
             let proof_pub_hash = await obj.HashPublicInputs.call(proof_root, nullifier, proof_exthash);
 
             // Run prover to generate proof
             let args = [
                 MiximusProvingKeyPath,
                 proof_root.toString(10),
-                nullifier.toString(10),
                 proof_exthash.toString(10),
-                spend_preimage.toString(10),
+                secret.toString(10),
                 proof_address,
                 proof_path
             ];
