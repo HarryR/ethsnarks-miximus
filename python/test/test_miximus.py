@@ -20,12 +20,12 @@ class TestMiximus(unittest.TestCase):
 			tree.append(int(FQ.random()))
 
 		exthash = int(FQ.random())
-		nullifier = int(FQ.random())
-		spend_preimage = int(FQ.random())
-		spend_hash = mimc_hash([spend_preimage, nullifier])
-		leaf_hash = mimc_hash([nullifier, spend_hash])
+		secret = int(FQ.random())
+		leaf_hash = mimc_hash([secret])
 		leaf_idx = tree.append(leaf_hash)
 		self.assertEqual(leaf_idx, tree.index(leaf_hash))
+
+		nullifier = mimc_hash([leaf_idx, secret])
 
 		# Verify it exists in true
 		leaf_proof = tree.proof(leaf_idx)
@@ -36,8 +36,7 @@ class TestMiximus(unittest.TestCase):
 		tree_depth = wrapper.tree_depth
 		snark_proof = wrapper.prove(
 			tree.root,
-			nullifier,
-			spend_preimage,
+			secret,
 			exthash,
 			leaf_proof.address,
 			leaf_proof.path)
