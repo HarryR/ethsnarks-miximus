@@ -38,7 +38,7 @@ before_build:
   # Rename sh.exe as sh.exe in PATH interferes with MinGW
   - if [%COMPILER%]==[MinGW] rename "C:\Program Files\Git\usr\bin\sh.exe" "sh2.exe"
   - cmake -E make_directory build
-  - cmake -E chdir build cmake -G "%CMAKE_GENERATOR%" -DOPENSSL_ROOT_DIR=C:\OpenSSL-Win64 -DOPENSSL_LIBRARIES=C:\OpenSSL-Win64\lib -DOPENSSL_INCLUDE_DIR=C:\OpenSSL-Win64\include ..
+  - cmake -E chdir build cmake -G "%CMAKE_GENERATOR%" -DOPENSSL_ROOT_DIR=C:\OpenSSL-Win64 -DOPENSSL_LIBRARIES=C:\OpenSSL-Win64\lib -DOPENSSL_INCLUDE_DIR=C:\OpenSSL-Win64\include ..\circuit\
 
 build_script:
   - cmake --build build 
