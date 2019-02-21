@@ -28,7 +28,7 @@ git-pull:
 	$(GIT) submodule update --recursive --remote
 
 clean:
-	rm -rf .build
+	rm -rf .build solidity/node_modules
 
 python-test:
 	$(MAKE) -C python test

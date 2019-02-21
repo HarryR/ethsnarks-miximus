@@ -34,6 +34,7 @@ For CentOS / Amazon:
 
 ```
 yum install cmake3 boost-devel gmp-devel
+nvm install --lts
 make -C ethsnarks python-dependencies
 make CMAKE=cmake3
 ```
