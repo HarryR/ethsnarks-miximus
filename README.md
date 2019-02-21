@@ -23,13 +23,20 @@ Before building, you may need to retrieve the source code for the dependencies:
 
 The following dependencies (for Linux) are needed:
 
- * cmake
+ * cmake 3
  * g++ or clang++
  * gmp
  * libcrypto
  * boost
  * npm / nvm
 
+For CentOS / Amazon:
+
+```
+yum install cmake3 boost-devel gmp-devel
+make -C ethsnarks python-dependencies
+make CMAKE=cmake3
+```
 
 ## Maintainers
 

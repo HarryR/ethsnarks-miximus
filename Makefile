@@ -1,4 +1,6 @@
 CLI = .build/miximus_cli
+CMAKE ?= cmake
+GIT ?= git
 
 all: $(CLI) test
 
@@ -7,23 +9,23 @@ $(CLI): .build
 
 .build:
 	mkdir -p $@
-	cd $@ && cmake ../circuit/ || rm -rf ../$@
+	cd $@ && $(CMAKE) ../circuit/ || rm -rf ../$@
 
 debug:
-	mkdir -p .build && cd .build && cmake -DCMAKE_BUILD_TYPE=Debug ../circuit/
+	mkdir -p .build && cd .build && $(CMAKE) -DCMAKE_BUILD_TYPE=Debug ../circuit/
 
 release:
-	mkdir -p .build && cd .build && cmake -DCMAKE_BUILD_TYPE=Release ../circuit/
+	mkdir -p .build && cd .build && $(CMAKE) -DCMAKE_BUILD_TYPE=Release ../circuit/
 
 performance:
-	mkdir -p .build && cd .build && cmake -DCMAKE_BUILD_TYPE=Release -DPERFORMANCE=1 ../circuit/
+	mkdir -p .build && cd .build && $(CMAKE) -DCMAKE_BUILD_TYPE=Release -DPERFORMANCE=1 ../circuit/
 
 git-submodules:
-	git submodule update --init --recursive
+	$(GIT) submodule update --init --recursive
 
 git-pull:
-	git pull --recurse-submodules
-	git submodule update --recursive --remote
+	$(GIT) pull --recurse-submodules
+	$(GIT) submodule update --recursive --remote
 
 clean:
 	rm -rf .build
