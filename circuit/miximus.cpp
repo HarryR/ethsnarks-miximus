@@ -47,7 +47,7 @@ namespace ethsnarks {
 *   assert H(root, nullifier, external_hash) == pub_hash
 *   leaf_hash = H(secret) # Prove we know the secret for the leaf
 *   assert root == merkle_authenticate(path_var, address_bits, leaf_hash) # Prove that leaf exists within the tree
-*   assert H(address_bits, secret) == nullifier
+*   assert H(secret, address_bits) == nullifier
 *
 * The following statements must be true for privacy of both the depositor and the withdrawee:
 *
