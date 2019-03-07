@@ -25,8 +25,6 @@ class TestMiximus(unittest.TestCase):
 		leaf_idx = tree.append(leaf_hash)
 		self.assertEqual(leaf_idx, tree.index(leaf_hash))
 
-		nullifier = mimc_hash([leaf_idx, secret])
-
 		# Verify it exists in true
 		leaf_proof = tree.proof(leaf_idx)
 		self.assertTrue(leaf_proof.verify(tree.root))
