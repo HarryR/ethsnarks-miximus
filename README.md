@@ -15,12 +15,6 @@ The zkSNARK prover is built as a native library which can plug-in to your applic
 
 ## Building
 
-Type `make` - the first time you run it will retrieve submodules, setup cmake and build everything, for more information about the build process see the [Travis-CI build logs](https://travis-ci.org/HarryR/ethsnarks-miximus).
-
-Before building, you may need to retrieve the source code for the dependencies:
-
-	git submodule update --init --recursive
-
 The following dependencies (for Linux) are needed:
 
  * cmake 3
