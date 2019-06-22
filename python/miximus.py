@@ -21,6 +21,7 @@ __all__ = ('Miximus',)
 
 import os
 import re
+import json
 import ctypes
 
 from ethsnarks.verifier import Proof, VerifyingKey
@@ -57,6 +58,11 @@ class Miximus(object):
         lib_prove.restype = ctypes.c_char_p
         self._prove = lib_prove
 
+        lib_prove_json = lib.miximus_prove_json
+        lib_prove_json.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+        lib_prove_json.restype = ctypes.c_char_p
+        self._prove_json = lib_prove_json
+
         lib_verify = lib.miximus_verify
         lib_verify.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         lib_verify.restype = ctypes.c_bool
@@ -91,20 +97,19 @@ class Miximus(object):
         if pk_file is None:
             raise RuntimeError("No proving key file")
 
-        # Public parameters
-        root = ctypes.c_char_p(str(root).encode('ascii'))
-        exthash = ctypes.c_char_p(str(exthash).encode('ascii'))
-    
-        # Private parameters
-        spend_preimage = ctypes.c_char_p(str(spend_preimage).encode('ascii'))
-        address_bits = ctypes.c_char_p(address_bits.encode('ascii'))
-        path = [ctypes.c_char_p(str(_).encode('ascii')) for _ in path]
-        path_carr = (ctypes.c_char_p * len(path))()
-        path_carr[:] = path
+        args_dict = dict(
+            root=hex(root),
+            exthash=hex(exthash),
+            secret=hex(spend_preimage),
+            address=sum([(1<<i)*int(_) for i, _ in enumerate(address_bits)]),
+            path=[hex(_) for _ in path]
+        )
+        args_json = json.dumps(args_dict).encode('ascii')
+        args_json_cstr = ctypes.c_char_p(args_json)
 
         pk_file_cstr = ctypes.c_char_p(pk_file.encode('ascii'))
 
-        data = self._prove(pk_file_cstr, root, exthash, spend_preimage, address_bits, path_carr)
+        data = self._prove_json(pk_file_cstr, args_json_cstr)
         if data is None:
             raise RuntimeError("Could not prove!")
         return Proof.from_json(data)

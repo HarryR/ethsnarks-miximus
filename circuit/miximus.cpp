@@ -29,13 +29,17 @@ along with Miximus.  If not, see <https://www.gnu.org/licenses/>.
 #include <libsnark/gadgetlib1/gadgets/basic_gadgets.hpp>
 
 
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
+
+
 using libsnark::dual_variable_gadget;
-using libff::convert_field_element_to_bit_vector;
 using ethsnarks::ppT;
 using ethsnarks::FieldT;
 using ethsnarks::ProtoboardT;
 
 const size_t MIXIMUS_TREE_DEPTH = 29;
+
 
 namespace ethsnarks {
 
@@ -241,6 +245,65 @@ char* miximus_nullifier( const char *in_secret, const char *in_leaf_index )
 }
 
 
+static char *miximus_prove_internal(
+    const char *pk_file,
+    const FieldT arg_root,
+    const FieldT arg_exthash,
+    const FieldT arg_secret,
+    const libff::bit_vector address_bits,
+    const std::vector<FieldT> arg_path
+)
+{
+    // Create protoboard with gadget
+    ProtoboardT pb;
+    ethsnarks::mod_miximus mod(pb, "miximus");
+    mod.generate_r1cs_constraints();
+    mod.generate_r1cs_witness(arg_root, arg_exthash, arg_secret, address_bits, arg_path);
+
+    if( ! pb.is_satisfied() )
+    {
+        std::cerr << "Not Satisfied!" << std::endl;
+        return nullptr;
+    }
+
+    std::cerr << pb.num_constraints() << " constraints" << std::endl;
+
+    // Return proof as a JSON document, which must be destroyed by the caller
+    const auto proof_as_json = ethsnarks::stub_prove_from_pb(pb, pk_file);
+    return ::strdup(proof_as_json.c_str());
+}
+
+
+char *miximus_prove_json( const char *pk_file, const char *in_json )
+{
+    ppT::init_public_params();
+
+    const auto root = json::parse(in_json);
+    const auto arg_root = ethsnarks::parse_FieldT(root.at("root"));
+    const auto arg_secret = ethsnarks::parse_FieldT(root.at("secret")); 
+    const auto arg_exthash = ethsnarks::parse_FieldT(root.at("exthash"));
+
+    const auto arg_path = ethsnarks::create_F_list(root.at("path"));
+    if( arg_path.size() != MIXIMUS_TREE_DEPTH )
+    {
+        std::cerr << "Path length doesn't match tree depth" << std::endl;
+        return nullptr;
+    }
+
+    // Fill address bits from integer
+    unsigned long address = root.at("address").get<decltype(address)>();
+    assert( (sizeof(address) * 8) >= MIXIMUS_TREE_DEPTH );
+    libff::bit_vector address_bits;
+    address_bits.resize(MIXIMUS_TREE_DEPTH);
+    for( size_t i = 0; i < MIXIMUS_TREE_DEPTH; i++ )
+    {
+        address_bits[i] = (address & (1u<<i)) != 0;
+    }
+
+    return miximus_prove_internal(pk_file, arg_root, arg_exthash, arg_secret, address_bits, arg_path);
+}
+
+
 char *miximus_prove(
     const char *pk_file,
     const char *in_root,
@@ -274,7 +337,6 @@ char *miximus_prove(
         address_bits[i] = '0' - in_address[i];
     }
 
-
     // Fill path from field elements from in_path
     std::vector<FieldT> arg_path;
     arg_path.resize(MIXIMUS_TREE_DEPTH);
@@ -283,23 +345,7 @@ char *miximus_prove(
         arg_path[i] = FieldT(in_path[i]);
     }
 
-    // Create protoboard with gadget
-    ProtoboardT pb;
-    ethsnarks::mod_miximus mod(pb, "miximus");
-    mod.generate_r1cs_constraints();
-    mod.generate_r1cs_witness(arg_root, arg_exthash, arg_secret, address_bits, arg_path);
-
-    if( ! pb.is_satisfied() )
-    {
-        std::cerr << "Not Satisfied!" << std::endl;
-        return nullptr;
-    }
-
-    std::cerr << pb.num_constraints() << " constraints" << std::endl;
-
-    // Return proof as a JSON document, which must be destroyed by the caller
-    const auto json = ethsnarks::stub_prove_from_pb(pb, pk_file);
-    return ::strdup(json.c_str());
+    return miximus_prove_internal(pk_file, arg_root, arg_exthash, arg_secret, address_bits, arg_path);
 }
 
 

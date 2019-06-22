@@ -31,6 +31,14 @@ var libmiximus = ffi.Library("../.build/libmiximus", {
         ]
     ],
 
+    // Create a proof for the parameters (encoded as json)
+    "miximus_prove_json": [
+        "string", [
+            "string",       // pk_file
+            "string",       // args_json
+        ]
+    ],
+
     // Verify a proof
     "miximus_verify": [
         "bool", [
@@ -99,34 +107,34 @@ contract("TestableMiximus", () => {
             let proof_address = tmp[1].map((_) => _ ? "1" : "0").join("");
             let proof_path = [];
             for( var i = 0; i < proof_address.length; i++ ) {
-                proof_path.push( tmp[0][i].toString(10) );
+                proof_path.push( "0x" + tmp[0][i].toString(16) );
             }
             let proof_root = await obj.GetRoot.call();
             proof_root = new_root_and_offset[0];
             let leaf_index = new_root_and_offset[1];
             let proof_exthash = await obj.GetExtHash.call();
 
+            // Calcuate our nullifier, so we can verify the proof matches what is expected
             let nullifier = libmiximus.miximus_nullifier(secret.toString(10), leaf_index.toString(10));
-            console.log('Nullifier is', nullifier);
             let proof_pub_hash = await obj.HashPublicInputs.call(proof_root, nullifier, proof_exthash);
 
             // Run prover to generate proof
-            let args = [
-                MiximusProvingKeyPath,
-                proof_root.toString(10),
-                proof_exthash.toString(10),
-                secret.toString(10),
-                proof_address,
-                proof_path
-            ];
-            let proof_json = libmiximus.miximus_prove(...args);
+            let proof_address_int = proof_address.split("").map((v, i) => (parseInt(v) ? Math.pow(2, i) : 0)).reduce(function(a, b) { return a + b; }, 0);
+            let json_args = {
+                'root': "0x" + proof_root.toString(16),
+                'exthash': "0x" + proof_exthash.toString(16),
+                'secret': "0x" + secret.toString(16),
+                'address': proof_address_int,
+                'path': proof_path,
+            };
+            let proof_json = libmiximus.miximus_prove_json(MiximusProvingKeyPath, JSON.stringify(json_args));
+
+            // There *must* be JSON returned, containing the valid proof
             assert.notStrictEqual(proof_json, null);
             let proof = JSON.parse(proof_json);
 
-
             // Ensure proof inputs match what is expected
             assert.strictEqual("0x" + proof_pub_hash.toString(16), proof.input[0]);
-
 
             // Re-verify proof using native library
             // XXX: node-ffi on OSX will not null-terminate strings returned from `readFileSync` !

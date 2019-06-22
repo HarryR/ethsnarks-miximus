@@ -28,6 +28,21 @@ extern "C" {
 
 const extern size_t MIXIMUS_TREE_DEPTH;
 
+/**
+* Prover inputs is a JSON dictionary with the following structure:
+* {
+*    "root": "0x..",     // Merkle root
+*    "exthash": "0x...", // Hash of external arguments 
+*    "secret": "0x...",  // Secret for the leaf
+*    "address": 1234,    // Index of the leaf, or address of the leaf in the tree
+*    "path": ["0x...", "0x...", ...] // Merkle tree authentication path
+* }
+*
+* Returns proof as JSON string
+*/
+char *miximus_prove_json( const char *pk_file, const char *in_json );
+
+
 char *miximus_prove(
     const char *pk_file,
     const char *in_root,
