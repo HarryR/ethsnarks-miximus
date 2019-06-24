@@ -64,13 +64,61 @@ static int main_prove( int argc, char **argv )
         arg_path[i] = argv[9 + i];
     }
 
-    auto json = miximus_prove(pk_filename, arg_root, arg_exthash, arg_secret, arg_address, arg_path);
+    auto proof_json = miximus_prove(pk_filename, arg_root, arg_exthash, arg_secret, arg_address, arg_path);
+    if( proof_json == nullptr ) {
+        std::cerr << "Failed to prove\n";
+        return 1;
+    }
 
     ofstream fh;
     fh.open(proof_filename, std::ios::binary);
-    fh << json;
+    fh << proof_json;
     fh.flush();
     fh.close();
+
+    return 0;
+}
+
+const std::string read_all_stdin () {
+    // don't skip the whitespace while reading
+    std::cin >> std::noskipws;
+    // use stream iterators to copy the stream to a string
+    std::istream_iterator<char> it(std::cin);
+    std::istream_iterator<char> end;
+    return std::string(it, end);
+}
+
+
+static int main_prove_json( int argc, char **argv )
+{
+    if( argc < 3 ) {
+        std::cerr << "Usage: " << argv[0] << " prove_json <proving.key> [output_proof.json]\n";
+        return 1;
+    }
+
+    auto json_buf = read_all_stdin();
+    auto pk_filename = argv[2];
+
+    auto proof_json = miximus_prove_json(pk_filename, json_buf.c_str());
+    if( proof_json == nullptr ) {
+        std::cerr << "Failed to prove\n";
+        return 2;
+    }
+
+    // output to stdout by default
+    if( argc < 4 ) {
+        std::cout << proof_json;
+        return 0;
+    }
+
+    // Otherwise outtput to specific file
+    ofstream fh;
+    fh.open(argv[2], std::ios::binary);
+    fh << proof_json;
+    fh.flush();
+    fh.close();
+
+    std::cerr << "OK\n";
 
     return 0;
 }
@@ -80,7 +128,7 @@ int main( int argc, char **argv )
 {
     if( argc < 2 )
     {
-        cerr << "Usage: " << argv[0] << " <genkeys|prove|verify> [...]" << endl;
+        cerr << "Usage: " << argv[0] << " <genkeys|prove|prove_json|verify> [...]" << endl;
         return 1;
     }
 
@@ -89,6 +137,10 @@ int main( int argc, char **argv )
     if( arg_cmd == "prove" )
     {
         return main_prove(argc, argv);
+    }
+    else if( arg_cmd == "prove_json" )
+    {
+        return main_prove_json(argc, argv);
     }
     else if( arg_cmd == "genkeys" )
     {
