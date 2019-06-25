@@ -17,9 +17,8 @@ You should have received a copy of the GNU General Public License
 along with Miximus.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <cstring>
 #include <iostream> // cerr
-#include <fstream>  // ofstream
+#include <fstream>  // ifstream,ofstream
 
 #include "miximus.cpp"
 #include "stubs.hpp"
@@ -79,26 +78,48 @@ static int main_prove( int argc, char **argv )
     return 0;
 }
 
-const std::string read_all_stdin () {
+
+void read_all_file (const std::string &filename, std::string &out) {
+    std::ifstream fh(filename, std::ios::binary);
+
+    fh.seekg(0, std::ios::end);   
+    out.reserve(fh.tellg());
+    fh.seekg(0, std::ios::beg);
+
+    out.assign((std::istreambuf_iterator<char>(fh)),
+                std::istreambuf_iterator<char>());
+}
+
+
+void read_all_stdin (std::string &out) {
     // don't skip the whitespace while reading
     std::cin >> std::noskipws;
     // use stream iterators to copy the stream to a string
     std::istream_iterator<char> it(std::cin);
     std::istream_iterator<char> end;
-    return std::string(it, end);
+    out.assign(it, end);
 }
 
 
 static int main_prove_json( int argc, char **argv )
 {
     if( argc < 3 ) {
-        std::cerr << "Usage: " << argv[0] << " prove_json <proving.key> [output_proof.json]\n";
+        std::cerr << "Usage: " << argv[0] << " prove_json <proving.key> [-|input.json] [-|proof.json]\n";
         return 1;
+    }    
+
+    const std::string input_file((argc > 3) ? argv[3] : "-");
+    const std::string output_file((argc > 4) ? argv[4] : "-");
+
+    std::string json_buf;
+    if( input_file == "-" ) {
+        read_all_stdin(json_buf);
+    }
+    else {
+        read_all_file(input_file, json_buf);
     }
 
-    auto json_buf = read_all_stdin();
     auto pk_filename = argv[2];
-
     auto proof_json = miximus_prove_json(pk_filename, json_buf.c_str());
     if( proof_json == nullptr ) {
         std::cerr << "Failed to prove\n";
@@ -106,14 +127,14 @@ static int main_prove_json( int argc, char **argv )
     }
 
     // output to stdout by default
-    if( argc < 4 ) {
+    if( output_file == "-" ) {
         std::cout << proof_json;
         return 0;
     }
 
-    // Otherwise outtput to specific file
+    // Otherwise output to specific file
     ofstream fh;
-    fh.open(argv[2], std::ios::binary);
+    fh.open(output_file, std::ios::binary);
     fh << proof_json;
     fh.flush();
     fh.close();
