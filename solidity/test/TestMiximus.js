@@ -87,21 +87,31 @@ let proof_to_flat = (proof) => {
 
 contract("TestableMiximus", () => {
     describe("Deposit", () => {
-        it("deposits then withdraws", async () => {
-            let obj = await TestableMiximus.deployed();
+        let obj;
+        let secret;
+        let leaf_hash;
+        let proof_root;
+        let nullifier;
+        let proof;
+        let new_root_and_offset;
+
+        it("gets ready for deposit", async () => {
+            obj = await TestableMiximus.deployed();
 
             // Parameters for deposit
-            let secret = new BN(crypto.randomBytes(30).toString("hex"), 16);
-            let leaf_hash = await obj.MakeLeafHash.call(secret);
+            secret = new BN(crypto.randomBytes(30).toString("hex"), 16);
+            leaf_hash = await obj.MakeLeafHash.call(secret);
 
             // Perform deposit
-            let new_root_and_offset = await obj.Deposit.call(leaf_hash, {value: 1000000000000000000});
+            new_root_and_offset = await obj.Deposit.call(leaf_hash, {value: 1000000000000000000});
+        });
+
+        it("deposits", async () => {
             await obj.Deposit.sendTransaction(leaf_hash, {value: 1000000000000000000});
+        });
 
-
+        it("construct arguments for withdraw", async () => {
             // TODO: verify amount has been transferred
-
-
             // Build parameters for proving
             let tmp = await obj.GetPath.call(new_root_and_offset[1]);
             let proof_address = tmp[1].map((_) => _ ? "1" : "0").join("");
@@ -109,13 +119,14 @@ contract("TestableMiximus", () => {
             for( var i = 0; i < proof_address.length; i++ ) {
                 proof_path.push( "0x" + tmp[0][i].toString(16) );
             }
-            let proof_root = await obj.GetRoot.call();
+            proof_root = await obj.GetRoot.call();
+            // TODO: verify proof root equals expected one
             proof_root = new_root_and_offset[0];
             let leaf_index = new_root_and_offset[1];
             let proof_exthash = await obj.GetExtHash.call();
 
             // Calcuate our nullifier, so we can verify the proof matches what is expected
-            let nullifier = libmiximus.miximus_nullifier(secret.toString(10), leaf_index.toString(10));
+            nullifier = libmiximus.miximus_nullifier(secret.toString(10), leaf_index.toString(10));
             let proof_pub_hash = await obj.HashPublicInputs.call(proof_root, nullifier, proof_exthash);
 
             // Run prover to generate proof
@@ -131,7 +142,7 @@ contract("TestableMiximus", () => {
 
             // There *must* be JSON returned, containing the valid proof
             assert.notStrictEqual(proof_json, null);
-            let proof = JSON.parse(proof_json);
+            proof = JSON.parse(proof_json);
 
             // Ensure proof inputs match what is expected
             assert.strictEqual("0x" + proof_pub_hash.toString(16), proof.input[0]);
@@ -170,20 +181,20 @@ contract("TestableMiximus", () => {
             // Verify nullifier doesn't exist
             let is_spent_b4_withdraw = await obj.IsSpent(nullifier.toString(10));
             assert.strictEqual(is_spent_b4_withdraw, false);
+        });
 
-
+        it("withdraws", async () => {
             // Then perform the withdraw
             await obj.Withdraw(
                 proof_root.toString(10),
                 nullifier.toString(10),
                 proof_to_flat(proof));
+        });
 
-
+        it("nullifier exists after withdraw", async () => {
             // Verify nullifier exists
             let is_spent = await obj.IsSpent(nullifier.toString(10));
             assert.strictEqual(is_spent, true);
-
-
             // TODO: verify balance has been increased
         });
     });
