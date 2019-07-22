@@ -7,17 +7,18 @@
 	"author": "HarryR@noreply.users.gihub.com",
 	"license": "GPL-3.0+",
 	"dependencies": {
-		"solc": "^0.5.3",
-		"truffle": "^5.0.2"
+		"solc": "^0.5.10",
+		"truffle": "^5.0.28"
 	},
 	"devDependencies": {
-		"bn.js": "^4.11.8",
+		"bn.js": "^5.0.0",
 		"ffi": "github:lxe/node-ffi#node-12",
-		"ganache-cli": "^6.2.5",
+		"ganache-cli": "^6.5.0",
 		"ref": "github:lxe/ref#node-12",
 		"ref-array": "github:lxe/ref-array#node-12",
 		"solhint": "^1.5.0",
-		"solidity-coverage": "^0.5.11"
+		"solidity-coverage": "^0.6.3",
+		"eth-gas-reporter": "^0.2.6"
 	},
 	"scripts": {
 		"compile": "truffle compile",
