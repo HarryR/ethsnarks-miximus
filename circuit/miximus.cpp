@@ -87,7 +87,7 @@ namespace ethsnarks {
 class mod_miximus : public GadgetT
 {
 public:
-    typedef MiMC_hash_gadget HashT;
+    typedef MiMC_e7_hash_gadget HashT;
     const size_t tree_depth = MIXIMUS_TREE_DEPTH;
 
     // public inputs

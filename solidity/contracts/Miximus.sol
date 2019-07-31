@@ -21,7 +21,7 @@ pragma solidity ^0.5.0;
 
 import "../../ethsnarks/contracts/Verifier.sol";
 import "../../ethsnarks/contracts/MerkleTree.sol";
-import "../../ethsnarks/contracts/MiMC.sol";
+import "../../ethsnarks/contracts/MiMC_hash.sol";
 
 
 contract Miximus
@@ -63,7 +63,9 @@ contract Miximus
 
 
     /**
-    * Returns leaf offset
+    * Inserts a new leaf into the tree upon a deposit of the correct amount
+    *
+    * Returns the index of the new leaf, and the new merkle root for the tree
     */
     function Deposit(uint256 leaf)
         public payable returns (uint256 new_root, uint256 new_offset)
@@ -83,7 +85,7 @@ contract Miximus
     {
         uint256[] memory vals = new uint256[](1);
         vals[0] = secret;
-        return MiMC.Hash(vals);
+        return MiMC_hash.MiMCpe7_mp(vals, 0);
     }
 
 
@@ -132,7 +134,7 @@ contract Miximus
         inputs_to_hash[1] = in_nullifier;
         inputs_to_hash[2] = in_exthash;
 
-        return MiMC.Hash(inputs_to_hash);
+        return MiMC_hash.MiMCpe7_mp(inputs_to_hash, 0);
     }
 
 
@@ -168,6 +170,12 @@ contract Miximus
     )
         public
     {
+        // Clamp inputs to the scalar field
+        // This avoids aliasing, which would allow double spend!
+        uint256 Q = Verifier.ScalarField();
+        in_root = in_root % Q;
+        in_nullifier = in_nullifier % Q;
+
         require( false == nullifiers[in_nullifier], "Cannot double-spend" );
 
         require( true == roots[in_root], "Must specify known merkle tree root" );
